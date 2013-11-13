@@ -6,62 +6,37 @@ _col = (colName) ->
     [collection, created] = Fields._getCollection colName
     collection
 
-_wrap = (fContext, formSpec, fieldSpec) ->
-    refId = fContext._id
+_wrapBasics = (fContext, fieldSpec) ->
     fContext.label = fieldSpec.label
-    
-    fContext.fieldId = () ->
-        fieldSpec.colName + '-' + refId
-    fContext.ready = () ->
-        Session.get fieldSpec.colName + '-ready'
-    fContext.value = () ->
-        collection = _col fieldSpec.colName
-        data = collection.findOne
-            refId: refId
-        data?.interimValue
-    fContext.changed = () ->
-        collection = _col fieldSpec.colName
-        data = collection.findOne
-            refId: refId
-        data?.interimValue isnt data?.value
-    fContext.created = () ->
-        Session.get fieldSpec.colName + '-' + refId + '-created'
+    fContext.hint = fieldSpec.hint
+    fContext.fieldId = fieldSpec.colName + '-' + fContext._id
+
+_wrapEditState = (fContext) ->
     fContext.editing = () ->
-        Session.get fieldSpec.colName + '-' + refId + '-editing'
+        Session.get fContext.fieldId + '-editing'
     fContext.showEditStateTrigger = () ->
-        Session.get fieldSpec.colName + '-' + refId + '-editStateTrigger'
-    fContext.valid = () ->
-        Session.get fieldSpec.colName + '-' + refId + '-valid'
-    fContext.invalid = () ->
-        not Session.get fieldSpec.colName + '-' + refId + '-valid'
+        Session.get fContext.fieldId + '-editStateTrigger'
     
-    fContext._save = () ->
-        collection = _col fieldSpec.colName
-        data = collection.findOne {refId: refId}
-        collection.update {_id: data._id}, {$set: {value: data.interimValue}}
-        Session.set fieldSpec.colName + '-' + refId + '-editing', false
-        Session.set fieldSpec.colName + '-' + refId + '-created', false
-    fContext._discard = () ->
-        collection = _col fieldSpec.colName
-        data = collection.findOne {refId: refId}
-        collection.update {_id: data._id}, {$set: {interimValue: data.value}}
-        Session.set fieldSpec.colName + '-' + refId + '-editing', false
-    fContext._update = (newValue) ->
-        collection = _col fieldSpec.colName
-        data = collection.findOne {refId: refId}
-        collection.update {_id: data._id}, {$set: {interimValue: newValue}}
     fContext._enterEditState = () ->
-        Session.set fieldSpec.colName + '-' + refId + '-editing', true
+        Session.set fContext.fieldId + '-editing', true
     fContext._enableEditStateTrigger = () ->
-        Session.set fieldSpec.colName + '-' + refId + '-editStateTrigger', true
+        Session.set fContext.fieldId + '-editStateTrigger', true
+        Meteor.setTimeout fContext._disableEditStateTrigger, 2000
     fContext._disableEditStateTrigger = () ->
-        Session.set fieldSpec.colName + '-' + refId + '-editStateTrigger', false
+        Session.set fContext.fieldId + '-editStateTrigger', false
+
+_wrapValidation = (fContext, fieldSpec) ->
+    fContext.validChange = () ->
+        fContext.changed() and fContext.valid()
+    fContext.valid = () ->
+        Session.get fContext.fieldId + '-valid'
+    fContext.invalid = () ->
+        not Session.get fContext.fieldId + '-valid'
     
     fContext._enterInvalidState = () ->
-        Session.set fieldSpec.colName + '-' + refId + '-valid', false
+        Session.set fContext.fieldId + '-valid', false
     fContext._leaveInvalidState = () ->
-        Session.set fieldSpec.colName + '-' + refId + '-valid', true
-    
+        Session.set fContext.fieldId + '-valid', true
     fContext._valid = (newValue) ->
         valid = false
         if validator? and validator[fieldSpec.colName]?
@@ -72,47 +47,118 @@ _wrap = (fContext, formSpec, fieldSpec) ->
             else
                 valid = newValue.replace(/\s/g, '').length > 0
         valid
-        
-    if fieldSpec.type is 'select'
-        fContext.choices = fieldSpec.choices
-        
-            
-    
-    #subscribe to the referenced value
-    Meteor.subscribe fieldSpec.colName, refId, () ->
+
+_wrapValue = (fContext, fieldSpec) ->
+    fContext.value = () ->
         collection = _col fieldSpec.colName
-        data = collection.findOne {refId: refId}
+        data = collection.findOne
+            refId: fContext._id
+        data?.interimValue
+
+_wrapUpdate = (fContext, fieldSpec) ->
+    fContext.changed = () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne
+            refId: fContext._id
+        data?.interimValue isnt data?.value
+    
+    fContext._save = () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        collection.update {_id: data._id}, {$set: {value: data.interimValue}}
+        Session.set fContext.fieldId + '-editing', false
+        Session.set fContext.fieldId + '-created', false
+    fContext._discard = () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        collection.update {_id: data._id}, {$set: {interimValue: data.value}}
+        Session.set fContext.fieldId + '-editing', false
+    fContext._update = (newValue) ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        collection.update {_id: data._id}, {$set: {interimValue: newValue}}
+    
+
+_loadData = (fContext, fieldSpec) ->
+    fContext.ready = () ->
+        Session.get fieldSpec.colName + '-ready'
+    fContext.created = () ->
+        Session.get fContext.fieldId + '-created'
+        
+    #subscribe to the referenced value
+    Meteor.subscribe fieldSpec.colName, fContext._id, () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
         unless data?
-            Session.set fieldSpec.colName + '-' + refId + '-created', true
+            Session.set fContext.fieldId + '-created', true
             
             defaultValue = ''
             if fieldSpec.default?
                 defaultValue = fieldSpec.default
             collection.insert 
-                refId: refId
+                refId: fContext._id
                 value: defaultValue
                 interimValue: defaultValue
         Session.set fieldSpec.colName + '-ready', true
-        
+    
+
+_wrapRich = (fContext, formSpec, fieldSpec) ->
+    _wrapBasics fContext, fieldSpec
+    _loadData fContext, fieldSpec
     
     
-Template.fieldsBase.events
+_wrapSelect = (fContext, formSpec, fieldSpec) ->
+    
+    _wrapBasics fContext, fieldSpec
+    _loadData fContext, fieldSpec
+    
+    _wrapValue fContext, fieldSpec
+    _wrapUpdate fContext, fieldSpec
+    _wrapEditState fContext
+    
+    _selected = (e) ->
+        if fContext.value() is e
+            'selected'
+    
+    fContext.choices = () ->
+        fieldSpec.choices.map (e) ->
+            {choice: e, selected: _selected e}
+    
+    
+_wrapSimple = (fContext, formSpec, fieldSpec) ->
+    _wrapBasics fContext, fieldSpec
+    _loadData fContext, fieldSpec
+    
+    _wrapValue fContext, fieldSpec
+    _wrapEditState fContext
+    _wrapUpdate fContext, fieldSpec
+    _wrapValidation fContext, fieldSpec
+    
+
+_editStateEvents = 
     'mouseenter': (e) ->
         @_enableEditStateTrigger()
-    'mouseleave': (e) ->
-        @_disableEditStateTrigger()
+    #'mouseleave': (e) ->
+    #    @_disableEditStateTrigger()
     'click .fields-edit-state-trigger': (e) ->
         e.stopPropagation()
         @_enterEditState()
+        
+_textInputUpdateEvents = 
     'keyup .fields-content': (e) ->
         e.stopPropagation()
         newValue = e.currentTarget.value
-        if @_valid newValue
-            @_leaveInvalidState()
-            @_update newValue
+        if newValue.replace(/\s/g, '').length is 0
+            @_enterInvalidState()
         else
-            e.currentTarget.value = @value()
-            @_enterInvalidState
+            if @_valid newValue
+                @_leaveInvalidState()
+                @_update newValue
+            else
+                e.currentTarget.value = @value()
+                @_enterInvalidState
+    
+_clickSaveDiscardEvents = 
     'click .fields-save': (e) ->
         e.stopPropagation()
         @_save()
@@ -120,7 +166,16 @@ Template.fieldsBase.events
         e.stopPropagation()
         @_discard()
     
+        
+Template.fieldsSimple.events _editStateEvents
+Template.fieldsSimple.events _textInputUpdateEvents
+Template.fieldsSimple.events _clickSaveDiscardEvents
     
+Template.fieldsSelect.events _editStateEvents
+Template.fieldsSelect.events
+    'change .fields-select': (e) ->
+        @_update e.currentTarget.value
+        @_save()
     
 Handlebars.registerHelper 'fieldsForm', (formName, options) ->
     self = {}
@@ -136,7 +191,7 @@ Handlebars.registerHelper 'fieldsComplex', (fieldName, options) ->
     self._container = fieldName
     self._fieldPath = @_fieldPath.concat [fieldName, 'elements']
     
-    Template.fieldsActions options.fn self
+    Template.fieldsComplex options.fn self
     
 Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
     self = {}
@@ -146,9 +201,28 @@ Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
     formSpec = Fields.forms.findOne {form: self._form}
     fieldSpec = path.reduce ((s, e) -> s[e]), formSpec
     fieldSpec.colName = path.join '.'
-    _wrap self, formSpec, fieldSpec
     
+    ###
     if @_container?
         Template.fieldsBare options.fn self
     else
         Template.fieldsBase options.fn self
+    ###
+    
+    switch fieldSpec.type 
+        when 'simpletext','number'
+            _wrapSimple self, formSpec, fieldSpec
+            Template.fieldsSimple options.fn self
+        when 'richtext'
+            _wrapRich self, formSpec, fieldSpec
+            Template.fieldsRich options.fn self
+        when 'select'
+            _wrapSelect self, formSpec, fieldSpec
+            Template.fieldsSelect options.fn self
+        when 'date'
+            _wrapDate self, formSpec, fieldSpec
+            Template.fieldsDate options.fn self
+        when 'duration'
+            _wrapDuration self, formSpec, fieldSpec
+            Template.fieldsDuration options.fn self
+    

@@ -14,9 +14,15 @@ proposalForm =
         label: 'Project Type'
         type: 'select'
         choices: projectTypes()
+    codeName: 
+        label: 'Code Name'
+        type: 'simpletext'
+        default: 'None'
+        hint: 'You can give your project a code name.'
     cost:
         label: 'Costs'
         type: 'number'
+        hint: 'Enter the estimated costs engaging this project.'
     risks:
         label: 'Risks'
         type: 'complex'
@@ -40,13 +46,13 @@ if Meteor.isServer
     
     
     Meteor.startup () ->
-        Proposals.remove {}
-        Proposals.insert
-            name: 'The Ring'
-        Proposals.insert
-            name: 'The Others'
-        Proposals.insert
-            name: 'Texas Chainsaw Massacre'
+        if Proposals.find().count() is 0
+            Proposals.insert
+                name: 'The Ring'
+            Proposals.insert
+                name: 'The Others'
+            Proposals.insert
+                name: 'Texas Chainsaw Massacre'
     
     Meteor.publish 'proposals', () ->
         Proposals.find()

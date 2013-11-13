@@ -46,26 +46,60 @@
             </div>
             {{/fieldsComplex}}
             {{#fieldsField 'cost'}}
+            {{> fieldRow}}
+            {{/fieldsField}}
+            {{#fieldsField 'projectType'}}
             <div class="row-fluid">
-                <span class="label">{{label}}</span>
-                {{#if ready}}
-                {{#if editing}}
-                <span class="input-append">
-                <input id="{{fieldId}}" type="text" class="fields-content" value="{{value}}">
-                {{#if changed}}
-                <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
-                {{/if}}
-                <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
-                </span>
-                {{else}}
-                <span>{{value}}</span>
-                {{#if showEditStateTrigger}}
-                <button type="button" class="btn fields-edit-state-trigger"><i class="icon-pencil"></i></button>
-                {{/if}}
-                {{/if}}
-                {{/if}}
+                <div class="control-group {{#if invalid}}error{{/if}}">
+                    <span class="control-label">{{label}}</span>
+                    {{#if ready}}
+                    {{#if editing}}
+                    <select class="fields-select">
+                    {{#each choices}}
+                    <option {{selected}}>{{choice}}</option>
+                    {{/each}}
+                    </select>
+                    {{else}}
+                    <span>{{value}}</span>
+                    {{> editStateTrigger}}
+                    {{/if}}
+                    {{/if}}
+                </div>
             </div>
+            {{/fieldsField}}
+            {{#fieldsField 'codeName'}}
+            {{> fieldRow}}
             {{/fieldsField}}
         {{/fieldsForm}}
     </div>
+</template>
+
+<template name="fieldRow">
+    <div class="row-fluid">
+        {{#if ready}}
+        <div class="control-group {{#if invalid}}error{{/if}}">
+        <span class="control-label" for="{{fieldId}}">{{label}}:</span>
+        {{#if editing}}
+        <span class="input-append">
+        <input id="{{fieldId}}" type="text" class="fields-content" value="{{value}}">
+        {{#if validChange}}
+        <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
+        {{/if}}
+        <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
+        </span>
+        <span class="help-inline">{{hint}}</span>
+        {{else}}
+        <span>{{value}}</span>
+        {{> editStateTrigger}}
+        {{/if}}
+        </div>
+        {{/if}}
+    </div>
+</template>
+
+
+<template name="editStateTrigger">
+    {{#if showEditStateTrigger}}
+    <button type="button" class="btn fields-edit-state-trigger"><i class="icon-pencil"></i></button>
+    {{/if}}
 </template>
