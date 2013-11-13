@@ -1,13 +1,71 @@
 <head>
-  <title>fields2</title>
+    <title>fields2</title>
 </head>
 
 <body>
-  {{> hello}}
+    <h1>Fields Demo</h1>
+    {{> main}}
 </body>
 
-<template name="hello">
-  <h1>Hello World!</h1>
-  {{greeting}}
-  <input type="button" value="Click" />
+<template name="main">
+    <table class="table table-hover">{{name}}</div>
+    <tbody>
+    {{#each proposals}}
+    <tr class="proposal"><td>{{name}}</td></tr>
+    {{/each}}
+    </tbody>
+    </table>
+    {{#if selectedProposal}}
+        {{> form selectedProposal}}
+    {{/if}}
+</template>
+
+<template name="form">
+    <div class="container-fluid">
+        <h2>{{name}}</h2>
+        {{#fieldsForm 'proposal'}}
+            {{#fieldsField 'summary'}}
+            <div class="row-fluid">
+                <span class="label">{{label}}</span>
+                <span class="notification">{{notifications}}</span>
+            </div>
+            {{#if ready}}
+                <div class="row-fluid editor">{{{value}}}</div>
+            {{else}}
+                LOADING
+            {{/if}}
+            {{/fieldsField}}
+            {{#fieldsComplex 'risks'}}
+            <div class="row-fluid">
+                {{#fieldsField 'name'}}
+                <span class="label">{{label}}</span>
+                {{/fieldsField}}
+                {{#fieldsField 'probability'}}
+                <span class="label">{{label}}</span>
+                {{/fieldsField}}
+            </div>
+            {{/fieldsComplex}}
+            {{#fieldsField 'cost'}}
+            <div class="row-fluid">
+                <span class="label">{{label}}</span>
+                {{#if ready}}
+                {{#if editing}}
+                <span class="input-append">
+                <input id="{{fieldId}}" type="text" class="fields-content" value="{{value}}">
+                {{#if changed}}
+                <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
+                {{/if}}
+                <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
+                </span>
+                {{else}}
+                <span>{{value}}</span>
+                {{#if showEditStateTrigger}}
+                <button type="button" class="btn fields-edit-state-trigger"><i class="icon-pencil"></i></button>
+                {{/if}}
+                {{/if}}
+                {{/if}}
+            </div>
+            {{/fieldsField}}
+        {{/fieldsForm}}
+    </div>
 </template>
