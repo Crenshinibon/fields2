@@ -1,7 +1,6 @@
 Deps.autorun () ->
     Meteor.subscribe 'forms'
 
-
 _col = (colName) ->
     [collection, created] = Fields._getCollection colName
     collection
@@ -9,6 +8,7 @@ _col = (colName) ->
 _wrapBasics = (fContext, fieldSpec) ->
     fContext.label = fieldSpec.label
     fContext.hint = fieldSpec.hint
+    fContext.inputClass = fieldSpec.inputClass
     fContext.fieldId = fieldSpec.colName + '-' + fContext._id
 
 _wrapEditState = (fContext) ->
@@ -20,12 +20,14 @@ _wrapEditState = (fContext) ->
     fContext._enterEditState = () ->
         Session.set fContext.fieldId + '-editing', true
     fContext._enableEditStateTrigger = () ->
-        Session.set fContext.fieldId + '-editStateTrigger', true
-        Meteor.setTimeout fContext._disableEditStateTrigger, 2000
+        unless Session.get fContext.fieldId + '-editStateTrigger'
+            Session.set fContext.fieldId + '-editStateTrigger', true
+            Meteor.setTimeout fContext._disableEditStateTrigger, 2000
     fContext._disableEditStateTrigger = () ->
         Session.set fContext.fieldId + '-editStateTrigger', false
 
 _wrapValidation = (fContext, fieldSpec) ->
+    Session.set fContext.fieldId + '-valid', true
     fContext.validChange = () ->
         fContext.changed() and fContext.valid()
     fContext.valid = () ->
@@ -104,11 +106,18 @@ _loadData = (fContext, fieldSpec) ->
 
 _wrapRich = (fContext, formSpec, fieldSpec) ->
     _wrapBasics fContext, fieldSpec
+    fContext.editorId = fContext.fieldId.replace(/\./g,'-') + "-editor"
+    fContext.toolbarId = fContext.fieldId.replace(/\./g,'-') + "-toolbar"
+    
     _loadData fContext, fieldSpec
+    
+    _wrapValue fContext, fieldSpec
+    _wrapUpdate fContext, fieldSpec
+    _wrapEditState fContext
+    _wrapValidation fContext, fieldSpec
     
     
 _wrapSelect = (fContext, formSpec, fieldSpec) ->
-    
     _wrapBasics fContext, fieldSpec
     _loadData fContext, fieldSpec
     
@@ -138,8 +147,6 @@ _wrapSimple = (fContext, formSpec, fieldSpec) ->
 _editStateEvents = 
     'mouseenter': (e) ->
         @_enableEditStateTrigger()
-    #'mouseleave': (e) ->
-    #    @_disableEditStateTrigger()
     'click .fields-edit-state-trigger': (e) ->
         e.stopPropagation()
         @_enterEditState()
@@ -170,7 +177,35 @@ _clickSaveDiscardEvents =
 Template.fieldsSimple.events _editStateEvents
 Template.fieldsSimple.events _textInputUpdateEvents
 Template.fieldsSimple.events _clickSaveDiscardEvents
+
+Template.fieldsRich.events _editStateEvents
+Template.fieldsRich.events _clickSaveDiscardEvents
+Template.fieldsRich.events
+    'click [data-edit]': (e) ->
+        newValue = $("##{@editorId}").cleanHtml()
+        if @_valid newValue
+            @_leaveInvalidState()
+            @_update newValue
+        else
+            e.currentTarget.value = @value()
+            @_enterInvalidState
+    'keyup div.editor': (e) ->
+        e.stopPropagation()
+        newValue = $(e.currentTarget).cleanHtml()
+        if @_valid newValue
+            @_leaveInvalidState()
+            @_update newValue
+        else
+            e.currentTarget.value = @value()
+            @_enterInvalidState
     
+Template.fieldsRich.rendered = () ->
+    e = @find '.editor'
+    t = @find '.toolbar'
+    if e? and t?
+        $(e).wysiwyg
+            toolbarSelector: "##{t.id}"
+
 Template.fieldsSelect.events _editStateEvents
 Template.fieldsSelect.events
     'change .fields-select': (e) ->
@@ -184,14 +219,14 @@ Handlebars.registerHelper 'fieldsForm', (formName, options) ->
     self._fieldPath = ['formSpec']
     options.fn self
     
-Handlebars.registerHelper 'fieldsComplex', (fieldName, options) ->
+Handlebars.registerHelper 'fieldsGroup', (fieldName, options) ->
     self = {}
     self._id = @_id
     self._form = @_form
     self._container = fieldName
     self._fieldPath = @_fieldPath.concat [fieldName, 'elements']
     
-    Template.fieldsComplex options.fn self
+    Template.fieldsGroup options.fn self
     
 Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
     self = {}

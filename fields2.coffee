@@ -22,10 +22,11 @@ proposalForm =
     cost:
         label: 'Costs'
         type: 'number'
+        inputClass: 'input-small'
         hint: 'Enter the estimated costs engaging this project.'
     risks:
         label: 'Risks'
-        type: 'complex'
+        type: 'group'
         elements:
             name: 
                 label: 'Name'

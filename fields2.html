@@ -26,16 +26,31 @@
         {{#fieldsForm 'proposal'}}
             {{#fieldsField 'summary'}}
             <div class="row-fluid">
-                <span class="label">{{label}}</span>
-                <span class="notification">{{notifications}}</span>
+                <span class="control-label"><strong>{{label}}:</strong></span>
+                {{#if ready}}
+                {{#unless editing}}
+                {{> editStateTrigger}}
+                {{/unless}}
+                {{/if}}
             </div>
             {{#if ready}}
-                <div class="row-fluid editor">{{{value}}}</div>
+            {{#if editing}}
+            <div id="{{toolbarId}}" class="row-fluid toolbar">
+                {{> toolbar}}
+            </div>
+            {{#constant}}
+            <div id="{{editorId}}" class="row-fluid editor">
+                {{{value}}}
+            </div>
+            {{/constant}}
             {{else}}
-                LOADING
+            <div class="row-fluid">
+                {{{value}}}
+            </div>
+            {{/if}}
             {{/if}}
             {{/fieldsField}}
-            {{#fieldsComplex 'risks'}}
+            {{#fieldsGroup 'risks'}}
             <div class="row-fluid">
                 {{#fieldsField 'name'}}
                 <span class="label">{{label}}</span>
@@ -44,14 +59,14 @@
                 <span class="label">{{label}}</span>
                 {{/fieldsField}}
             </div>
-            {{/fieldsComplex}}
+            {{/fieldsGroup}}
             {{#fieldsField 'cost'}}
             {{> fieldRow}}
             {{/fieldsField}}
             {{#fieldsField 'projectType'}}
             <div class="row-fluid">
                 <div class="control-group {{#if invalid}}error{{/if}}">
-                    <span class="control-label">{{label}}</span>
+                    <span class="span2 control-label">{{label}}:</span>
                     {{#if ready}}
                     {{#if editing}}
                     <select class="fields-select">
@@ -78,10 +93,10 @@
     <div class="row-fluid">
         {{#if ready}}
         <div class="control-group {{#if invalid}}error{{/if}}">
-        <span class="control-label" for="{{fieldId}}">{{label}}:</span>
+        <span class="span2 control-label" for="{{fieldId}}">{{label}}:</span>
         {{#if editing}}
         <span class="input-append">
-        <input id="{{fieldId}}" type="text" class="fields-content" value="{{value}}">
+        <input id="{{fieldId}}" type="text" class="fields-content {{inputClass}}" value="{{value}}">
         {{#if validChange}}
         <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
         {{/if}}
@@ -102,4 +117,27 @@
     {{#if showEditStateTrigger}}
     <button type="button" class="btn fields-edit-state-trigger"><i class="icon-pencil"></i></button>
     {{/if}}
+</template>
+
+<template name="toolbar">
+    <div id="toolbar-{{_id}}" class="btn-toolbar toolbar" data-role="editor-toolbar" data-target="#{{editorId}}">
+        <div class="btn-group">
+          <a class="btn dropdown-toggle" data-toggle="dropdown" title="Font Size"><i class="icon-text-height"></i>&nbsp;<b class="caret"></b></a>
+            <ul class="dropdown-menu">
+            <li><a data-edit="fontSize 5"><font size="5">Huge</font></a></li>
+            <li><a data-edit="fontSize 3"><font size="3">Normal</font></a></li>
+            <li><a data-edit="fontSize 1"><font size="1">Small</font></a></li>
+            </ul>
+        </div>
+        <div class="btn-group">
+          <a class="btn" data-edit="bold" title="Bold (Ctrl/Cmd+B)"><i class="icon-bold"></i></a>
+          <a class="btn" data-edit="italic" title="Italic (Ctrl/Cmd+I)"><i class="icon-italic"></i></a>
+        </div>
+        <div class="btn-group">
+            {{#if validChange}}
+            <button type="button" class="btn fields-save"><i class="icon-ok"></i></button>
+            {{/if}}
+            <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
+        </div>
+    </div>
 </template>
