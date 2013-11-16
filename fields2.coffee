@@ -8,8 +8,11 @@ proposalForm =
     summary: 
         label: 'Management Summary'
         type: 'richtext'
-        default: 'Some Description'
         comments: true
+    justification:
+        label: 'Justification'
+        type: 'richtext'
+        comments: true 
     projectType: 
         label: 'Project Type'
         type: 'select'
@@ -31,6 +34,7 @@ proposalForm =
             name: 
                 label: 'Name'
                 type: 'simpletext'
+                default: 'New Risk'
             probability:
                 label: 'Probability'
                 type: 'select'

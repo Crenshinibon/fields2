@@ -25,40 +25,43 @@
         <h2>{{name}}</h2>
         {{#fieldsForm 'proposal'}}
             {{#fieldsField 'summary'}}
-            <div class="row-fluid">
-                <span class="control-label"><strong>{{label}}:</strong></span>
-                {{#if ready}}
-                {{#unless editing}}
-                {{> editStateTrigger}}
-                {{/unless}}
-                {{/if}}
-            </div>
-            {{#if ready}}
-            {{#if editing}}
-            <div id="{{toolbarId}}" class="row-fluid toolbar">
-                {{> toolbar}}
-            </div>
-            {{#constant}}
-            <div id="{{editorId}}" class="row-fluid editor">
-                {{{value}}}
-            </div>
-            {{/constant}}
-            {{else}}
-            <div class="row-fluid">
-                {{{value}}}
-            </div>
-            {{/if}}
-            {{/if}}
+            {{> richRow}}
+            {{/fieldsField}}
+            {{#fieldsField 'justification'}}
+            {{> richRow}}
             {{/fieldsField}}
             {{#fieldsGroup 'risks'}}
             <div class="row-fluid">
+                <span class="control-label">
+                    <strong>{{label}}:</strong>
+                </span>
+            </div>
+            <div class="row-fluid" style="background-color:yellow; padding: 5px;">
                 {{#fieldsField 'name'}}
-                <span class="label">{{label}}</span>
+                <span class="control-label">{{label}}:</span>
+                {{#if ready}}
+                {{#if editing}}
+                <input id="{{fieldId}}" value="{{value}}" class="fields-content {{inputClass}}">
+                {{else}}
+                <span>{{value}}</span>
+                {{> editStateTrigger}}
+                {{/if}}
+                {{/if}}
                 {{/fieldsField}}
                 {{#fieldsField 'probability'}}
-                <span class="label">{{label}}</span>
+                <span class="control-label">{{label}}:</span>
+                <span>{{value}}</span>
+                {{> editStateTrigger}}
                 {{/fieldsField}}
             </div>
+            {{#if editing}}
+            <div class="row-fluid">
+                {{#if validChange}}
+                <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
+                {{/if}}
+                <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
+            </div>
+            {{/if}}
             {{/fieldsGroup}}
             {{#fieldsField 'cost'}}
             {{> fieldRow}}
@@ -66,7 +69,7 @@
             {{#fieldsField 'projectType'}}
             <div class="row-fluid">
                 <div class="control-group {{#if invalid}}error{{/if}}">
-                    <span class="span2 control-label">{{label}}:</span>
+                    <span class="span2 control-label"><strong>{{label}}:</strong></span>
                     {{#if ready}}
                     {{#if editing}}
                     <select class="fields-select">
@@ -89,11 +92,40 @@
     </div>
 </template>
 
+<template name="richRow">
+    <div class="row-fluid">
+        <span class="control-label">
+            <strong>{{label}}:</strong>
+        </span>
+        {{#if ready}}
+        {{#unless editing}}
+        {{> editStateTrigger}}
+        {{/unless}}
+        {{/if}}
+    </div>
+    {{#if ready}}
+    {{#if editing}}
+    <div id="{{toolbarId}}" class="row-fluid toolbar">
+        {{> toolbar}}
+    </div>
+    {{#constant}}
+    <div id="{{editorId}}" class="row-fluid editor">
+        {{{value}}}
+    </div>
+    {{/constant}}
+    {{else}}
+    <div class="row-fluid">
+        {{{value}}}
+    </div>
+    {{/if}}
+    {{/if}}
+</template>
+
 <template name="fieldRow">
     <div class="row-fluid">
         {{#if ready}}
         <div class="control-group {{#if invalid}}error{{/if}}">
-        <span class="span2 control-label" for="{{fieldId}}">{{label}}:</span>
+        <span class="span2 control-label" for="{{fieldId}}"><strong>{{label}}:</strong></span>
         {{#if editing}}
         <span class="input-append">
         <input id="{{fieldId}}" type="text" class="fields-content {{inputClass}}" value="{{value}}">

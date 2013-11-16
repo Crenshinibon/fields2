@@ -9,8 +9,13 @@ _wrapBasics = (fContext, fieldSpec) ->
     fContext.label = fieldSpec.label
     fContext.hint = fieldSpec.hint
     fContext.inputClass = fieldSpec.inputClass
-    fContext.fieldId = fieldSpec.colName + '-' + fContext._id
-
+    
+    if fieldSpec.type is 'group'
+        fContext.fieldId = fContext._groupPath.join('.') + '-' + fContext._id
+    else
+        fContext.fieldId = fieldSpec.colName + '-' + fContext._id
+    
+    
 _wrapEditState = (fContext) ->
     fContext.editing = () ->
         Session.get fContext.fieldId + '-editing'
@@ -44,10 +49,12 @@ _wrapValidation = (fContext, fieldSpec) ->
         if validator? and validator[fieldSpec.colName]?
             valid = validator[fieldSpec.colName] newValue
         else
-            if fieldSpec.type is 'number'
+            if newValue.replace(/\s/g, '').length is 0
+                valid = true
+            else if fieldSpec.type is 'number'
                 valid = (/^[1-9][0-9]*[\.,]?[0-9]*$/).test newValue
             else
-                valid = newValue.replace(/\s/g, '').length > 0
+                valid = true
         valid
 
 _wrapValue = (fContext, fieldSpec) ->
@@ -63,7 +70,12 @@ _wrapUpdate = (fContext, fieldSpec) ->
         data = collection.findOne
             refId: fContext._id
         data?.interimValue isnt data?.value
+    fContext._update = (newValue) ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        collection.update {_id: data._id}, {$set: {interimValue: newValue}}
     
+_wrapSaveDiscard = (fContext, fieldSpec) ->
     fContext._save = () ->
         collection = _col fieldSpec.colName
         data = collection.findOne {refId: fContext._id}
@@ -75,10 +87,6 @@ _wrapUpdate = (fContext, fieldSpec) ->
         data = collection.findOne {refId: fContext._id}
         collection.update {_id: data._id}, {$set: {interimValue: data.value}}
         Session.set fContext.fieldId + '-editing', false
-    fContext._update = (newValue) ->
-        collection = _col fieldSpec.colName
-        data = collection.findOne {refId: fContext._id}
-        collection.update {_id: data._id}, {$set: {interimValue: newValue}}
     
 
 _loadData = (fContext, fieldSpec) ->
@@ -144,6 +152,37 @@ _wrapSimple = (fContext, formSpec, fieldSpec) ->
     _wrapValidation fContext, fieldSpec
     
 
+_wrapGroup = (fContext, formSpec, fieldSpec) ->
+    fContext._container = fContext
+    _wrapBasics fContext, fieldSpec
+    
+    fContext._elements = []
+    fContext._registerElement = (element) ->
+        fContext._elements.push element
+    
+    fContext.editing = () ->
+        _.any fContext._elements, (e) ->
+            e.editing()
+    
+    fContext.validChange = () ->
+        valid = _.all fContext._elements, (e) ->
+            if e.valid?
+                e.valid()
+            else
+                true
+        valid and fContext.changed()
+        
+    fContext.changed = () ->
+        _.any fContext._elements, (e) ->
+            e.changed()
+    fContext._discard = () ->
+        fContext._elements.forEach (e) ->
+            if e.changed() then e._discard()
+    fContext._save = () ->
+        fContext._elements.forEach (e) ->
+            if e.changed() then e._save()
+    
+
 _editStateEvents = 
     'mouseenter': (e) ->
         @_enableEditStateTrigger()
@@ -155,15 +194,12 @@ _textInputUpdateEvents =
     'keyup .fields-content': (e) ->
         e.stopPropagation()
         newValue = e.currentTarget.value
-        if newValue.replace(/\s/g, '').length is 0
-            @_enterInvalidState()
+        if @_valid newValue
+            @_leaveInvalidState()
+            @_update newValue
         else
-            if @_valid newValue
-                @_leaveInvalidState()
-                @_update newValue
-            else
-                e.currentTarget.value = @value()
-                @_enterInvalidState
+            e.currentTarget.value = @value()
+            @_enterInvalidState
     
 _clickSaveDiscardEvents = 
     'click .fields-save': (e) ->
@@ -212,6 +248,8 @@ Template.fieldsSelect.events
         @_update e.currentTarget.value
         @_save()
     
+Template.fieldsGroup.events _clickSaveDiscardEvents
+    
 Handlebars.registerHelper 'fieldsForm', (formName, options) ->
     self = {}
     self._id = @_id
@@ -223,8 +261,13 @@ Handlebars.registerHelper 'fieldsGroup', (fieldName, options) ->
     self = {}
     self._id = @_id
     self._form = @_form
-    self._container = fieldName
+    self._groupPath = @_fieldPath.concat [fieldName]
     self._fieldPath = @_fieldPath.concat [fieldName, 'elements']
+    
+    formSpec = Fields.forms.findOne {form: self._form}
+    groupSpec = self._groupPath.reduce ((s, e) -> s[e]), formSpec
+    
+    _wrapGroup self, formSpec, groupSpec
     
     Template.fieldsGroup options.fn self
     
@@ -237,12 +280,10 @@ Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
     fieldSpec = path.reduce ((s, e) -> s[e]), formSpec
     fieldSpec.colName = path.join '.'
     
-    ###
     if @_container?
-        Template.fieldsBare options.fn self
-    else
-        Template.fieldsBase options.fn self
-    ###
+        @_container._registerElement self
+    
+    _wrapSaveDiscard self, fieldSpec
     
     switch fieldSpec.type 
         when 'simpletext','number'

@@ -21,7 +21,7 @@ Fields._initSubForm = (field, fieldSpec, path) ->
 Fields.initField = (field, fieldSpec, path) ->
     fieldPath = path + '.' + field
     if fieldSpec.type? 
-        if fieldSpec.type is 'complex'
+        if fieldSpec.type is 'group'
             Fields._initSubForm field, fieldSpec.elements, fieldPath += '.elements'
         
         else
