@@ -38,15 +38,7 @@
             </div>
             <div class="row-fluid" style="background-color:yellow; padding: 5px;">
                 {{#fieldsField 'name'}}
-                <span class="control-label">{{label}}:</span>
-                {{#if ready}}
-                {{#if editing}}
-                <input id="{{fieldId}}" value="{{value}}" class="fields-content {{inputClass}}">
-                {{else}}
-                <span>{{value}}</span>
-                {{> editStateTrigger}}
-                {{/if}}
-                {{/if}}
+                {{> field}}
                 {{/fieldsField}}
                 {{#fieldsField 'probability'}}
                 <span class="control-label">{{label}}:</span>
@@ -88,6 +80,22 @@
             {{#fieldsField 'codeName'}}
             {{> fieldRow}}
             {{/fieldsField}}
+            {{#fieldsMulti 'milestones'}}
+            <div class="row-fluid">
+                <span class="control-label"><strong>{{label}}:</strong></span>
+                <button type="button" class="btn btn-small fields-add"><i class="icon-plus"></i></button>
+            </div>
+            {{#if ready}}
+            {{#each elements}}
+                <div class="well">
+                {{#fieldsField 'element'}}
+                {{> multiField}}
+                {{/fieldsField}}
+                <button type="button" class="btn fields-remove pull-right"><i class="icon-trash"></i></button></fields>
+                </div>
+            {{/each}}
+            {{/if}}
+            {{/fieldsMulti}}
         {{/fieldsForm}}
     </div>
 </template>
@@ -121,26 +129,57 @@
     {{/if}}
 </template>
 
+<template name="field">
+    <span class="control-label">{{label}}:</span>
+    {{#if ready}}
+    {{#if editing}}
+    <input id="{{fieldId}}" value="{{value}}" class="fields-content {{inputClass}}">
+    {{else}}
+    <span>{{value}}</span>
+    {{> editStateTrigger}}
+    {{/if}}
+    {{/if}}
+</template>
+
+<template name="multiField">
+    {{#if ready}}
+    <span class="control-label" for="{{fieldId}}"><strong>{{label}}:</strong></span>
+    {{#if editing}}
+    <span class="input-append">
+    <input id="{{fieldId}}" type="text" class="fields-content {{inputClass}}" value="{{value}}">
+    {{#if validChange}}
+    <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
+    {{/if}}
+    <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
+    </span>
+    <span class="help-inline">{{hint}}</span>
+    {{else}}
+    <span>{{value}}</span>
+    {{> editStateTrigger}}
+    {{/if}}
+    {{/if}}
+</template>
+
 <template name="fieldRow">
     <div class="row-fluid">
-        {{#if ready}}
-        <div class="control-group {{#if invalid}}error{{/if}}">
-        <span class="span2 control-label" for="{{fieldId}}"><strong>{{label}}:</strong></span>
-        {{#if editing}}
-        <span class="input-append">
-        <input id="{{fieldId}}" type="text" class="fields-content {{inputClass}}" value="{{value}}">
-        {{#if validChange}}
-        <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
-        {{/if}}
-        <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
-        </span>
-        <span class="help-inline">{{hint}}</span>
-        {{else}}
-        <span>{{value}}</span>
-        {{> editStateTrigger}}
-        {{/if}}
-        </div>
-        {{/if}}
+    {{#if ready}}
+    <div class="control-group {{#if invalid}}error{{/if}}">
+    <span class="span2 control-label" for="{{fieldId}}"><strong>{{label}}:</strong></span>
+    {{#if editing}}
+    <span class="input-append">
+    <input id="{{fieldId}}" type="text" class="fields-content {{inputClass}}" value="{{value}}">
+    {{#if validChange}}
+    <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
+    {{/if}}
+    <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
+    </span>
+    <span class="help-inline">{{hint}}</span>
+    {{else}}
+    <span>{{value}}</span>
+    {{> editStateTrigger}}
+    {{/if}}
+    </div>
+    {{/if}}
     </div>
 </template>
 

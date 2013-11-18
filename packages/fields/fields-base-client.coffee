@@ -21,8 +21,8 @@ _wrapEditState = (fContext) ->
         Session.get fContext.fieldId + '-editing'
     fContext.showEditStateTrigger = () ->
         Session.get fContext.fieldId + '-editStateTrigger'
-    
     fContext._enterEditState = () ->
+        console.log fContext
         Session.set fContext.fieldId + '-editing', true
     fContext._enableEditStateTrigger = () ->
         unless Session.get fContext.fieldId + '-editStateTrigger'
@@ -96,6 +96,7 @@ _loadData = (fContext, fieldSpec) ->
         Session.get fContext.fieldId + '-created'
         
     #subscribe to the referenced value
+    console.log fieldSpec
     Meteor.subscribe fieldSpec.colName, fContext._id, () ->
         collection = _col fieldSpec.colName
         data = collection.findOne {refId: fContext._id}
@@ -177,12 +178,56 @@ _wrapGroup = (fContext, formSpec, fieldSpec) ->
             e.changed()
     fContext._discard = () ->
         fContext._elements.forEach (e) ->
-            if e.changed() then e._discard()
+            e._discard()
     fContext._save = () ->
         fContext._elements.forEach (e) ->
             if e.changed() then e._save()
-    
 
+_wrapMulti = (fContext, formSpec, fieldSpec) ->
+    _wrapBasics fContext, fieldSpec
+    
+    fContext.ready = () ->
+        Session.get fieldSpec.colName + '-ready'
+    fContext.created = () ->
+        Session.get fContext.fieldId + '-created'
+    
+    fContext._add = () ->
+        newId = Meteor.uuid()
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        collection.update {_id: data._id}, {$push: {elements: newId}}
+        
+    fContext._remove = (elementId) ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        collection.update {_id: data._id}, {$pull: {elements: elementId}}
+    
+    fContext.elements = () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        if data?
+            data.elements.map (e) -> 
+                _id: e
+                _form: fContext._form
+                _fieldPath: fContext._fieldPath
+                _multiPath: fContext._multiPath
+                _remove: () ->
+                    fContext._remove e
+        else
+            []
+    
+    #subscribe to the multi field and the referenced values
+    Meteor.subscribe fieldSpec.colName, fContext._id, () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        unless data?
+            Session.set fContext.fieldId + '-created', true
+            collection.insert 
+                refId: fContext._id
+                elements: []
+        Session.set fieldSpec.colName + '-ready', true
+        
+    
 _editStateEvents = 
     'mouseenter': (e) ->
         @_enableEditStateTrigger()
@@ -249,6 +294,14 @@ Template.fieldsSelect.events
         @_save()
     
 Template.fieldsGroup.events _clickSaveDiscardEvents
+
+Template.fieldsMulti.events
+    'click .fields-add': (e) ->
+        e.stopPropagation()
+        @_add()
+    'click .fields-remove': (e) ->
+        e.stopPropagation()
+        @_remove()
     
 Handlebars.registerHelper 'fieldsForm', (formName, options) ->
     self = {}
@@ -271,6 +324,20 @@ Handlebars.registerHelper 'fieldsGroup', (fieldName, options) ->
     
     Template.fieldsGroup options.fn self
     
+Handlebars.registerHelper 'fieldsMulti', (fieldName, options) ->
+    self = {}
+    self._id = @_id
+    self._form = @_form
+    self._multiPath = @_fieldPath.concat [fieldName]
+    self._fieldPath = @_fieldPath.concat [fieldName]
+    
+    formSpec = Fields.forms.findOne {form: self._form}
+    multiSpec = self._multiPath.reduce ((s, e) -> s[e]), formSpec
+    multiSpec.colName = self._multiPath.join '.'
+    
+    _wrapMulti self, formSpec, multiSpec
+    Template.fieldsMulti options.fn self
+    
 Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
     self = {}
     self._id = @_id
@@ -288,6 +355,9 @@ Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
     switch fieldSpec.type 
         when 'simpletext','number'
             _wrapSimple self, formSpec, fieldSpec
+            #if fieldName is 'element'
+            #    console.log self, self.ready()
+    
             Template.fieldsSimple options.fn self
         when 'richtext'
             _wrapRich self, formSpec, fieldSpec

@@ -8,11 +8,11 @@ proposalForm =
     summary: 
         label: 'Management Summary'
         type: 'richtext'
-        comments: true
+        comments: true #specify a subform name
     justification:
         label: 'Justification'
         type: 'richtext'
-        comments: true 
+        comments: true #specifiy a subform name
     projectType: 
         label: 'Project Type'
         type: 'select'
@@ -27,6 +27,12 @@ proposalForm =
         type: 'number'
         inputClass: 'input-small'
         hint: 'Enter the estimated costs engaging this project.'
+    milestones:
+        label: 'Milestones'
+        type: 'multi'
+        element:
+            label: 'Name'
+            type: 'simpletext'
     risks:
         label: 'Risks'
         type: 'group'
