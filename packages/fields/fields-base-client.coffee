@@ -96,7 +96,6 @@ _loadData = (fContext, fieldSpec) ->
         Session.get fContext.fieldId + '-created'
         
     #subscribe to the referenced value
-    console.log fieldSpec
     Meteor.subscribe fieldSpec.colName, fContext._id, () ->
         collection = _col fieldSpec.colName
         data = collection.findOne {refId: fContext._id}
@@ -191,6 +190,39 @@ _wrapMulti = (fContext, formSpec, fieldSpec) ->
     fContext.created = () ->
         Session.get fContext.fieldId + '-created'
     
+    fContext._moveUp = (elementId) ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        cIndex = data.elements.indexOf elementId
+        if cIndex > 0
+            other = data.elements[cIndex - 1]
+            data.elements[cIndex] = other
+            data.elements[cIndex - 1] = elementId
+            
+            collection.update {_id: data._id}, {$set: {elements: data.elements}}
+        
+    fContext._upMoveable = (elementId) ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        data.elements.indexOf(elementId) > 0
+        
+    fContext._moveDown = (elementId) ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        cIndex = data.elements.indexOf elementId
+        if cIndex < (data.elements.length - 1)
+            other = data.elements[cIndex + 1]
+            data.elements[cIndex] = other
+            data.elements[cIndex + 1] = elementId
+            
+            collection.update {_id: data._id}, {$set: {elements: data.elements}}
+            
+    fContext._downMoveable = (elementId) ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        data.elements.indexOf(elementId) < (data.elements.length - 1)
+        
+    
     fContext._add = () ->
         newId = Meteor.uuid()
         collection = _col fieldSpec.colName
@@ -213,6 +245,14 @@ _wrapMulti = (fContext, formSpec, fieldSpec) ->
                 _multiPath: fContext._multiPath
                 _remove: () ->
                     fContext._remove e
+                upMoveable: () ->
+                    fContext._upMoveable e
+                _moveUp: () ->
+                    fContext._moveUp e
+                downMoveable: () ->
+                    fContext._downMoveable e
+                _moveDown: () ->
+                    fContext._moveDown e
         else
             []
     
@@ -302,6 +342,13 @@ Template.fieldsMulti.events
     'click .fields-remove': (e) ->
         e.stopPropagation()
         @_remove()
+    'click .fields-move-up': (e) ->
+        e.stopPropagation()
+        @_moveUp()
+    'click .fields-move-down': (e) ->
+        e.stopPropagation()
+        @_moveDown()
+    
     
 Handlebars.registerHelper 'fieldsForm', (formName, options) ->
     self = {}
