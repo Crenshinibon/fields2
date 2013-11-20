@@ -22,8 +22,8 @@ _wrapEditState = (fContext) ->
     fContext.showEditStateTrigger = () ->
         Session.get fContext.fieldId + '-editStateTrigger'
     fContext._enterEditState = () ->
-        console.log fContext
         Session.set fContext.fieldId + '-editing', true
+        fContext._disableEditStateTrigger()
     fContext._enableEditStateTrigger = () ->
         unless Session.get fContext.fieldId + '-editStateTrigger'
             Session.set fContext.fieldId + '-editStateTrigger', true
@@ -51,8 +51,8 @@ _wrapValidation = (fContext, fieldSpec) ->
         else
             if newValue.replace(/\s/g, '').length is 0
                 valid = true
-            else if fieldSpec.type is 'number'
-                valid = (/^[1-9][0-9]*[\.,]?[0-9]*$/).test newValue
+            else if fieldSpec.type in ['number','duration']
+                valid = (/^[1-9][0-9]*$/).test newValue
             else
                 valid = true
         valid
@@ -151,6 +151,109 @@ _wrapSimple = (fContext, formSpec, fieldSpec) ->
     _wrapUpdate fContext, fieldSpec
     _wrapValidation fContext, fieldSpec
     
+
+_wrapDate = (fContext, formSpec, fieldSpec) ->
+    _wrapBasics fContext, fieldSpec
+    _loadData fContext, fieldSpec
+
+
+_timeUnitFunctionMap =
+    second:
+        durationFormat: 'asSeconds'
+        label: 'Seconds'
+    minute:
+        durationFormat: 'asMinutes'
+        label: 'Minutes'
+    hour:
+        durationFormat: 'asHours'
+        label: 'Hours'
+    day:
+        durationFormat: 'asDays'
+        label: 'Days'
+    week:
+        durationFormat: 'asWeeks'
+        label: 'Weeks'
+    month:
+        durationFormat: 'asMonths'
+        label: 'Months'
+    year:
+        durationFormat: 'asYears'
+        label: 'Years'
+
+_wrapDuration = (fContext, formSpec, fieldSpec) ->
+    _wrapBasics fContext, fieldSpec
+    _loadData fContext, fieldSpec
+    
+    _wrapEditState fContext
+    _wrapValidation fContext, fieldSpec
+    
+    fContext.currentUnit = () ->
+        Session.get fContext.fieldId + '-durationUnit'
+    
+    unless fContext.currentUnit()
+        du = 'day'
+        if fieldSpec.defaultUnit
+            du = fieldSpec.defaultUnit
+        Session.set fContext.fieldId + '-durationUnit', du
+    
+    fContext._unitForLabel = (label) ->
+        for unit of _timeUnitFunctionMap
+            if _timeUnitFunctionMap[unit].label is label
+                return unit
+        'days'
+    
+    fContext.choices = () ->
+        choices = []
+        if fieldSpec.units?
+            fieldSpec.units.map (e) ->
+                if typeof e is 'string'
+                    choiceLabel: _timeUnitFunctionMap[e].label
+                    choice: e
+                    selected: _selected e
+                else
+                    choice: e.choice
+                    choiceLabel: e.label
+                    selected: _selected e
+        else
+            choices = _.keys(_timeUnitFunctionMap).map (e) ->
+                choiceLabel: _timeUnitFunctionMap[e].label
+                choice: e
+                selected: _selected e
+    
+    fContext.value = () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne
+            refId: fContext._id
+        value = data?.interimValue
+        duration = moment.duration value, 'seconds'
+        unit = fContext.currentUnit()
+        fn = _timeUnitFunctionMap[unit].durationFormat
+        Math.round duration[fn]()
+        
+    fContext.prettyValue = () ->
+        moment.duration(fContext.value(),fContext.currentUnit()).humanize()
+    
+    fContext._update = (newValue) ->
+        unit = fContext.currentUnit()
+        durInSeconds = moment.duration(parseInt(newValue), unit).asSeconds()
+        
+        collection = _col fieldSpec.colName
+        data = collection.findOne {refId: fContext._id}
+        collection.update {_id: data._id}, {$set: {interimValue: durInSeconds}}
+        
+    fContext.changed = () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne
+            refId: fContext._id
+        data?.interimValue isnt data?.value
+        
+    _selected = (e) ->
+        if fContext.currentUnit() is e
+            'selected'
+    
+    fContext._updateUnit = (newValue) ->
+        Session.set fContext.fieldId + '-durationUnit', newValue
+        
 
 _wrapGroup = (fContext, formSpec, fieldSpec) ->
     fContext._container = fContext
@@ -268,6 +371,7 @@ _wrapMulti = (fContext, formSpec, fieldSpec) ->
         Session.set fieldSpec.colName + '-ready', true
         
     
+    
 _editStateEvents = 
     'mouseenter': (e) ->
         @_enableEditStateTrigger()
@@ -298,6 +402,15 @@ _clickSaveDiscardEvents =
 Template.fieldsSimple.events _editStateEvents
 Template.fieldsSimple.events _textInputUpdateEvents
 Template.fieldsSimple.events _clickSaveDiscardEvents
+
+Template.fieldsDuration.events _editStateEvents
+Template.fieldsDuration.events _clickSaveDiscardEvents
+Template.fieldsDuration.events _textInputUpdateEvents
+Template.fieldsDuration.events
+    'change .fields-select': (e) ->
+        unit = @_unitForLabel e.currentTarget.value
+        @_updateUnit unit
+
 
 Template.fieldsRich.events _editStateEvents
 Template.fieldsRich.events _clickSaveDiscardEvents

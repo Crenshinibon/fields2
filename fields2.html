@@ -24,6 +24,34 @@
     <div class="container-fluid">
         <h2>{{name}}</h2>
         {{#fieldsForm 'proposal'}}
+            {{#fieldsField 'duration'}}
+            <div class="row-fluid">
+                <span class="span2 control-label">
+                    <strong>{{label}}:</strong>
+                </span>
+                {{#if ready}}
+                {{#if editing}}
+                <div class="input-append">
+                    <select class="fields-select input-small">
+                        {{#each choices}}
+                        <option {{selected}}>{{choiceLabel}}</option>
+                        {{/each}}
+                    </select>
+                    <input id="{{fieldId}}" type="text" value="{{value}}" class="fields-content input-small">
+                    {{#if validChange}}
+                    <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
+                    {{/if}}
+                    <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
+                    </span>
+                    <span class="help-inline">{{hint}}</span>
+                </div>
+                {{else}}
+                <span>{{prettyValue}}</span>
+                {{> editStateTrigger}}
+                {{/if}}
+                {{/if}}
+            </div>
+            {{/fieldsField}}
             {{#fieldsField 'summary'}}
             {{> richRow}}
             {{/fieldsField}}

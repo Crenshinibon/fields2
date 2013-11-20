@@ -9,6 +9,11 @@ proposalForm =
         label: 'Management Summary'
         type: 'richtext'
         comments: true #specify a subform name
+    duration:
+        label: 'Estimated Duration'
+        type: 'duration'
+        units: ['day','week','month']
+        defaultUnit: 'week'
     justification:
         label: 'Justification'
         type: 'richtext'
