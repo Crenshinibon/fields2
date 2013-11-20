@@ -32,11 +32,14 @@ _wrapEditState = (fContext) ->
         Session.set fContext.fieldId + '-editStateTrigger', false
 
 _wrapValidation = (fContext, fieldSpec) ->
-    Session.set fContext.fieldId + '-valid', true
+    
     fContext.validChange = () ->
         fContext.changed() and fContext.valid()
     fContext.valid = () ->
         Session.get fContext.fieldId + '-valid'
+    unless fContext.valid()?
+        Session.set fContext.fieldId + '-valid', true
+        
     fContext.invalid = () ->
         not Session.get fContext.fieldId + '-valid'
     
@@ -49,10 +52,10 @@ _wrapValidation = (fContext, fieldSpec) ->
         if validator? and validator[fieldSpec.colName]?
             valid = validator[fieldSpec.colName] newValue
         else
-            if newValue.replace(/\s/g, '').length is 0
-                valid = true
-            else if fieldSpec.type in ['number','duration']
-                valid = (/^[1-9][0-9]*$/).test newValue
+            if fieldSpec.type is 'date'
+                console.log newValue
+                valid = moment(newValue, fieldSpec.dateFormats).isValid()
+                console.log valid
             else
                 valid = true
         valid
@@ -151,12 +154,32 @@ _wrapSimple = (fContext, formSpec, fieldSpec) ->
     _wrapUpdate fContext, fieldSpec
     _wrapValidation fContext, fieldSpec
     
-
 _wrapDate = (fContext, formSpec, fieldSpec) ->
     _wrapBasics fContext, fieldSpec
     _loadData fContext, fieldSpec
-
-
+    
+    _wrapEditState fContext
+    _wrapUpdate fContext, fieldSpec
+    _wrapValidation fContext, fieldSpec
+    
+    fContext.value = () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne
+            refId: fContext._id
+        if data? and data.interimValue? and data.interimValue.length > 0
+            moment(data.interimValue, fieldSpec.formats).format(fieldSpec.formats[0])
+    
+    fContext.prettyValue = () ->
+        collection = _col fieldSpec.colName
+        data = collection.findOne
+            refId: fContext._id
+        format = 'dddd, MMMM Do YYYY'
+        if fieldSpec.displayFormat?
+            format = fieldSpec.displayFormat
+        
+        if data? and data.interimValue? and data.interimValue.length > 0
+            moment(data.interimValue, fieldSpec.formats).format(format)
+    
 _timeUnitFunctionMap =
     second:
         durationFormat: 'asSeconds'
@@ -190,7 +213,7 @@ _wrapDuration = (fContext, formSpec, fieldSpec) ->
     fContext.currentUnit = () ->
         Session.get fContext.fieldId + '-durationUnit'
     
-    unless fContext.currentUnit()
+    unless fContext.currentUnit()?
         du = 'day'
         if fieldSpec.defaultUnit
             du = fieldSpec.defaultUnit
@@ -225,13 +248,16 @@ _wrapDuration = (fContext, formSpec, fieldSpec) ->
         data = collection.findOne
             refId: fContext._id
         value = data?.interimValue
-        duration = moment.duration value, 'seconds'
-        unit = fContext.currentUnit()
-        fn = _timeUnitFunctionMap[unit].durationFormat
-        Math.round duration[fn]()
+        if value? and typeof value is 'number'
+            duration = moment.duration value, 'seconds'
+            unit = fContext.currentUnit()
+            fn = _timeUnitFunctionMap[unit].durationFormat
+            Math.round duration[fn]()
         
     fContext.prettyValue = () ->
-        moment.duration(fContext.value(),fContext.currentUnit()).humanize()
+        value = fContext.value()
+        if value? and typeof value is 'number'
+            moment.duration(value, fContext.currentUnit()).humanize()
     
     fContext._update = (newValue) ->
         unit = fContext.currentUnit()
@@ -378,17 +404,25 @@ _editStateEvents =
     'click .fields-edit-state-trigger': (e) ->
         e.stopPropagation()
         @_enterEditState()
+
+_numberInputUpdateEvents = 
+    'keydown .fields-content': (e) ->
+        unless e.which <= 57 or (e.which is 86 and (e.metaKey or e.ctrlKey))
+            e.preventDefault()
+    'keyup .fields-content': (e) ->
+        newValue = e.currentTarget.value
+        @_update newValue
         
 _textInputUpdateEvents = 
     'keyup .fields-content': (e) ->
         e.stopPropagation()
         newValue = e.currentTarget.value
+        @_update newValue
+        
         if @_valid newValue
             @_leaveInvalidState()
-            @_update newValue
         else
-            e.currentTarget.value = @value()
-            @_enterInvalidState
+            @_enterInvalidState()
     
 _clickSaveDiscardEvents = 
     'click .fields-save': (e) ->
@@ -403,14 +437,21 @@ Template.fieldsSimple.events _editStateEvents
 Template.fieldsSimple.events _textInputUpdateEvents
 Template.fieldsSimple.events _clickSaveDiscardEvents
 
+Template.fieldsNumber.events _editStateEvents
+Template.fieldsNumber.events _numberInputUpdateEvents
+Template.fieldsNumber.events _clickSaveDiscardEvents
+
 Template.fieldsDuration.events _editStateEvents
 Template.fieldsDuration.events _clickSaveDiscardEvents
-Template.fieldsDuration.events _textInputUpdateEvents
+Template.fieldsDuration.events _numberInputUpdateEvents
 Template.fieldsDuration.events
     'change .fields-select': (e) ->
         unit = @_unitForLabel e.currentTarget.value
         @_updateUnit unit
 
+Template.fieldsDate.events _editStateEvents
+Template.fieldsDate.events _textInputUpdateEvents
+Template.fieldsDate.events _clickSaveDiscardEvents
 
 Template.fieldsRich.events _editStateEvents
 Template.fieldsRich.events _clickSaveDiscardEvents
@@ -513,12 +554,12 @@ Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
     _wrapSaveDiscard self, fieldSpec
     
     switch fieldSpec.type 
-        when 'simpletext','number'
+        when 'simpletext'
             _wrapSimple self, formSpec, fieldSpec
-            #if fieldName is 'element'
-            #    console.log self, self.ready()
-    
             Template.fieldsSimple options.fn self
+        when 'number'
+            _wrapSimple self, formSpec, fieldSpec
+            Template.fieldsNumber options.fn self
         when 'richtext'
             _wrapRich self, formSpec, fieldSpec
             Template.fieldsRich options.fn self

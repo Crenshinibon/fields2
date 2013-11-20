@@ -14,6 +14,12 @@ proposalForm =
         type: 'duration'
         units: ['day','week','month']
         defaultUnit: 'week'
+    startDate:
+        label: 'Requested Start'
+        type: 'date'
+        formats: ['MM/DD/YYYY','DD.MM.YYYY']
+        hint: 'Enter the date on which the project should start <br>
+        The following formats are supported (mm/dd/yyyy and dd.mm.yyyy)'
     justification:
         label: 'Justification'
         type: 'richtext'

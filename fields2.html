@@ -1,9 +1,9 @@
 <head>
-    <title>fields2</title>
+    <title>Fields2 Demo</title>
 </head>
 
 <body>
-    <h1>Fields Demo</h1>
+    <h1>Fields2 Demo</h1>
     {{> main}}
 </body>
 
@@ -49,6 +49,31 @@
                 <span>{{prettyValue}}</span>
                 {{> editStateTrigger}}
                 {{/if}}
+                {{/if}}
+            </div>
+            {{/fieldsField}}
+            {{#fieldsField 'startDate'}}
+            <div class="row-fluid">
+                {{#if ready}}
+                <div class="control-group {{#if invalid}}error{{/if}}">
+                <span class="span2 control-label">
+                    <strong>{{label}}:</strong>
+                </span>
+                {{#if editing}}
+                <div class="input-append">
+                    <input id="{{fieldId}}" type="text" value="{{value}}" class="fields-content input-small">
+                    {{#if validChange}}
+                    <button type="button" class="btn btn-primary fields-save"><i class="icon-white icon-ok"></i></button>
+                    {{/if}}
+                    <button type="button" class="btn fields-cancel"><i class="icon-remove"></i></button>
+                    </span>
+                </div>
+                <span class="help-inline">{{{hint}}}</span>
+                {{else}}
+                <span>{{prettyValue}}</span>
+                {{> editStateTrigger}}
+                {{/if}}
+                </div>
                 {{/if}}
             </div>
             {{/fieldsField}}
