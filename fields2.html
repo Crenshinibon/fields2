@@ -160,6 +160,27 @@
             {{/fieldsMulti}}
         {{/fieldsForm}}
     </div>
+    {{> valueAccess}}
+</template>
+
+<template name="valueAccess">
+    <hr/>
+    <div class="row-fluid">
+        <span class="span2">Proposal Summary</span>
+        <span class="span10">{{currentValues 'proposal.summary'}}</span>
+    </div>
+    <div class="row-fluid">
+        <span class="span2">Risks</span>
+        <span class="span10">{{currentValues 'proposal.risks'}}</span>
+    </div>
+    <div class="row-fluid">
+        <span class="span2">Milestones</span>
+        <span class="span10">{{currentValues 'proposal.milestones'}}</span>
+    </div>
+    <hr/>
+    <div class="row-fluid">
+        {{currentForm 'proposal'}}
+    </div>
 </template>
 
 <template name="richRow">

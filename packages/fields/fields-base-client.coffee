@@ -53,9 +53,7 @@ _wrapValidation = (fContext, fieldSpec) ->
             valid = validator[fieldSpec.colName] newValue
         else
             if fieldSpec.type is 'date'
-                console.log newValue
-                valid = moment(newValue, fieldSpec.dateFormats).isValid()
-                console.log valid
+                valid = moment(newValue, fieldSpec.formats).isValid()
             else
                 valid = true
         valid
@@ -115,7 +113,7 @@ _loadData = (fContext, fieldSpec) ->
         Session.set fieldSpec.colName + '-ready', true
     
 
-_wrapRich = (fContext, formSpec, fieldSpec) ->
+_wrapRich = (fContext,  fieldSpec) ->
     _wrapBasics fContext, fieldSpec
     fContext.editorId = fContext.fieldId.replace(/\./g,'-') + "-editor"
     fContext.toolbarId = fContext.fieldId.replace(/\./g,'-') + "-toolbar"
@@ -128,7 +126,7 @@ _wrapRich = (fContext, formSpec, fieldSpec) ->
     _wrapValidation fContext, fieldSpec
     
     
-_wrapSelect = (fContext, formSpec, fieldSpec) ->
+_wrapSelect = (fContext,  fieldSpec) ->
     _wrapBasics fContext, fieldSpec
     _loadData fContext, fieldSpec
     
@@ -145,7 +143,7 @@ _wrapSelect = (fContext, formSpec, fieldSpec) ->
             {choice: e, selected: _selected e}
     
     
-_wrapSimple = (fContext, formSpec, fieldSpec) ->
+_wrapSimple = (fContext,  fieldSpec) ->
     _wrapBasics fContext, fieldSpec
     _loadData fContext, fieldSpec
     
@@ -154,7 +152,7 @@ _wrapSimple = (fContext, formSpec, fieldSpec) ->
     _wrapUpdate fContext, fieldSpec
     _wrapValidation fContext, fieldSpec
     
-_wrapDate = (fContext, formSpec, fieldSpec) ->
+_wrapDate = (fContext,  fieldSpec) ->
     _wrapBasics fContext, fieldSpec
     _loadData fContext, fieldSpec
     
@@ -166,8 +164,13 @@ _wrapDate = (fContext, formSpec, fieldSpec) ->
         collection = _col fieldSpec.colName
         data = collection.findOne
             refId: fContext._id
+        
         if data? and data.interimValue? and data.interimValue.length > 0
-            moment(data.interimValue, fieldSpec.formats).format(fieldSpec.formats[0])
+            format = fieldSpec.formats[0]
+            if fieldSpec.defaultFormat?
+                format = fieldSpec.defaultFormat
+            
+            moment(data.interimValue, fieldSpec.formats).format(format)
     
     fContext.prettyValue = () ->
         collection = _col fieldSpec.colName
@@ -203,7 +206,7 @@ _timeUnitFunctionMap =
         durationFormat: 'asYears'
         label: 'Years'
 
-_wrapDuration = (fContext, formSpec, fieldSpec) ->
+_wrapDuration = (fContext,  fieldSpec) ->
     _wrapBasics fContext, fieldSpec
     _loadData fContext, fieldSpec
     
@@ -281,7 +284,7 @@ _wrapDuration = (fContext, formSpec, fieldSpec) ->
         Session.set fContext.fieldId + '-durationUnit', newValue
         
 
-_wrapGroup = (fContext, formSpec, fieldSpec) ->
+_wrapGroup = (fContext,  fieldSpec) ->
     fContext._container = fContext
     _wrapBasics fContext, fieldSpec
     
@@ -311,7 +314,7 @@ _wrapGroup = (fContext, formSpec, fieldSpec) ->
         fContext._elements.forEach (e) ->
             if e.changed() then e._save()
 
-_wrapMulti = (fContext, formSpec, fieldSpec) ->
+_wrapMulti = (fContext,  fieldSpec) ->
     _wrapBasics fContext, fieldSpec
     
     fContext.ready = () ->
@@ -502,13 +505,27 @@ Template.fieldsMulti.events
     'click .fields-move-down': (e) ->
         e.stopPropagation()
         @_moveDown()
-    
-    
+
+
+Fields.lang = (lang) ->
+    if lang?
+        moment.lang(lang)
+    else
+        moment.lang()
+
+
 Handlebars.registerHelper 'fieldsForm', (formName, options) ->
     self = {}
     self._id = @_id
     self._form = formName
-    self._fieldPath = ['formSpec']
+    
+    form = Fields.forms.findOne {form: formName}
+    if form.lang?
+        Fields.lang form.lang
+    else
+        Fields.lang 'en'
+        
+    self._fieldPath = [formName]
     options.fn self
     
 Handlebars.registerHelper 'fieldsGroup', (fieldName, options) ->
@@ -518,10 +535,10 @@ Handlebars.registerHelper 'fieldsGroup', (fieldName, options) ->
     self._groupPath = @_fieldPath.concat [fieldName]
     self._fieldPath = @_fieldPath.concat [fieldName, 'elements']
     
-    formSpec = Fields.forms.findOne {form: self._form}
-    groupSpec = self._groupPath.reduce ((s, e) -> s[e]), formSpec
+    form = Fields.forms.findOne {form: self._form}
+    groupSpec = self._groupPath[1..].reduce ((s, e) -> s[e]), form.formSpec
     
-    _wrapGroup self, formSpec, groupSpec
+    _wrapGroup self, groupSpec
     
     Template.fieldsGroup options.fn self
     
@@ -532,11 +549,11 @@ Handlebars.registerHelper 'fieldsMulti', (fieldName, options) ->
     self._multiPath = @_fieldPath.concat [fieldName]
     self._fieldPath = @_fieldPath.concat [fieldName]
     
-    formSpec = Fields.forms.findOne {form: self._form}
-    multiSpec = self._multiPath.reduce ((s, e) -> s[e]), formSpec
+    form = Fields.forms.findOne {form: self._form}
+    multiSpec = self._multiPath[1..].reduce ((s, e) -> s[e]), form.formSpec
     multiSpec.colName = self._multiPath.join '.'
     
-    _wrapMulti self, formSpec, multiSpec
+    _wrapMulti self, multiSpec
     Template.fieldsMulti options.fn self
     
 Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
@@ -544,8 +561,8 @@ Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
     self._id = @_id
     self._form = @_form
     path = @_fieldPath.concat [fieldName]
-    formSpec = Fields.forms.findOne {form: self._form}
-    fieldSpec = path.reduce ((s, e) -> s[e]), formSpec
+    form = Fields.forms.findOne {form: self._form}
+    fieldSpec = path[1..].reduce ((s, e) -> s[e]), form.formSpec
     fieldSpec.colName = path.join '.'
     
     if @_container?
@@ -555,21 +572,21 @@ Handlebars.registerHelper 'fieldsField', (fieldName, options) ->
     
     switch fieldSpec.type 
         when 'simpletext'
-            _wrapSimple self, formSpec, fieldSpec
+            _wrapSimple self, fieldSpec
             Template.fieldsSimple options.fn self
         when 'number'
-            _wrapSimple self, formSpec, fieldSpec
+            _wrapSimple self, fieldSpec
             Template.fieldsNumber options.fn self
         when 'richtext'
-            _wrapRich self, formSpec, fieldSpec
+            _wrapRich self, fieldSpec
             Template.fieldsRich options.fn self
         when 'select'
-            _wrapSelect self, formSpec, fieldSpec
+            _wrapSelect self, fieldSpec
             Template.fieldsSelect options.fn self
         when 'date'
-            _wrapDate self, formSpec, fieldSpec
+            _wrapDate self, fieldSpec
             Template.fieldsDate options.fn self
         when 'duration'
-            _wrapDuration self, formSpec, fieldSpec
+            _wrapDuration self, fieldSpec
             Template.fieldsDuration options.fn self
     

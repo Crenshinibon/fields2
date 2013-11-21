@@ -5,12 +5,13 @@ Meteor.startup () ->
 Meteor.publish 'forms', () ->
     Fields.forms.find()
 
-Fields.initForm = (form, formSpec) ->
+Fields.initForm = (form, formSpec, lang) ->
     Fields.forms.insert
         form: form
         formSpec: formSpec
+        lang: lang
             
-    Fields._initSubForm form, formSpec, 'formSpec'
+    Fields._initSubForm form, formSpec, form
     
     
 Fields._initSubForm = (field, fieldSpec, path) ->

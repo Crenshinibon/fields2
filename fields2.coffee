@@ -17,9 +17,10 @@ proposalForm =
     startDate:
         label: 'Requested Start'
         type: 'date'
-        formats: ['MM/DD/YYYY','DD.MM.YYYY']
-        hint: 'Enter the date on which the project should start <br>
-        The following formats are supported (mm/dd/yyyy and dd.mm.yyyy)'
+        displayFormat: 'dddd, Do MMMM YYYY'
+        defaultFormat: 'DD.MM.YYYY'
+        formats: ['MM/DD/YY', 'MM/DD/YYYY', 'DD.MM.YY', 'DD.MM.YYYY', 'YYYYMMDD']
+        hint: 'The following formats are supported (mm/dd/yyyy and dd.mm.yyyy)'
     justification:
         label: 'Justification'
         type: 'richtext'
@@ -64,7 +65,7 @@ proposalForm =
 if Meteor.isServer
     
     Meteor.startup () ->
-        Fields.initForm 'proposal', proposalForm
+        Fields.initForm 'proposal', proposalForm, 'de'
     
     
     Meteor.startup () ->
@@ -95,5 +96,11 @@ if Meteor.isClient
         'click tr.proposal': (e) ->
             Session.set 'selectedProposal', @_id
             
-            
+    Template.valueAccess.currentValues = (fieldPath) ->
+        values = Fields.currentFieldValues fieldPath, @_id
+        JSON.stringify values
+        
+    Template.valueAccess.currentForm = (formName) ->
+        values = Fields.currentFormValues formName, @_id
+        JSON.stringify values
         
