@@ -6,6 +6,7 @@ Meteor.publish 'forms', () ->
     Fields.forms.find()
 
 Fields.initForm = (form, formSpec, lang) ->
+    Fields.forms.remove {form: form}
     Fields.forms.insert
         form: form
         formSpec: formSpec
@@ -18,8 +19,13 @@ Fields._initSubForm = (field, fieldSpec, path) ->
     for subField, subFieldSpec of fieldSpec
         Fields.initField subField, subFieldSpec, path
 
+Fields._initMultiForm = (field, fieldSpec, path) ->
+    fieldPath = path + '.' + field
+    multiSpec = fieldSpec.element
+    Fields.initField 'element', multiSpec, fieldPath
+    
 Fields._initCollection = (fp) ->
-    console.log fp
+    #console.log fp
     [collection, created] = Fields._getCollection fp
     if created
         Meteor.publish fp, (refId) ->
@@ -33,6 +39,5 @@ Fields.initField = (field, fieldSpec, path) ->
         else
             Fields._initCollection fieldPath
             if fieldSpec.type is 'multi'
-                Fields._initCollection fieldPath + '.element'
-    
+                Fields._initMultiForm field, fieldSpec, path
    

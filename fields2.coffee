@@ -67,7 +67,6 @@ if Meteor.isServer
     Meteor.startup () ->
         Fields.initForm 'proposal', proposalForm, 'de'
     
-    
     Meteor.startup () ->
         if Proposals.find().count() is 0
             Proposals.insert

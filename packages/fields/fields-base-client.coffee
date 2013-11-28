@@ -6,9 +6,7 @@ _col = (colName) ->
     collection
 
 _wrapBasics = (fContext, fieldSpec) ->
-    fContext.label = fieldSpec.label
-    fContext.hint = fieldSpec.hint
-    fContext.inputClass = fieldSpec.inputClass
+    _.extend fContext, fieldSpec
     
     if fieldSpec.type is 'group'
         fContext.fieldId = fContext._groupPath.join('.') + '-' + fContext._id
@@ -27,7 +25,7 @@ _wrapEditState = (fContext) ->
     fContext._enableEditStateTrigger = () ->
         unless Session.get fContext.fieldId + '-editStateTrigger'
             Session.set fContext.fieldId + '-editStateTrigger', true
-            Meteor.setTimeout fContext._disableEditStateTrigger, 2000
+            Meteor.setTimeout fContext._disableEditStateTrigger, 5000
     fContext._disableEditStateTrigger = () ->
         Session.set fContext.fieldId + '-editStateTrigger', false
 

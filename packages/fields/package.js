@@ -21,6 +21,7 @@ Package.on_use(function (api) {
    api.add_files('fields-templates.html','client');
    
    api.add_files('fields-base.coffee', ['server','client']);
+   api.add_files('fields-values-client.coffee', 'client');
    api.add_files('fields-base-client.coffee', 'client');
    api.add_files('fields-base-server.coffee', 'server');
    
