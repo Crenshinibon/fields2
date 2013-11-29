@@ -220,24 +220,36 @@ _wrapDuration = (fContext,  fieldSpec) ->
             du = fieldSpec.defaultUnit
         Session.set fContext.fieldId + '-durationUnit', du
     
-    fContext._unitForLabel = (label) ->
+    _defaultUnitForLabel = (label) ->
         for unit of _timeUnitFunctionMap
             if _timeUnitFunctionMap[unit].label is label
                 return unit
-        'days'
+    
+    fContext._unitForLabel = (label) ->
+        out = 'day'
+        if fieldSpec.units?
+            fieldSpec.units.forEach (e) ->
+                if typeof e is 'string'
+                    out _defaultUnitForLabel label
+                else
+                    if e.label is label
+                        out = e.choice
+        else
+            out = _defaultUnitForLabel label
+        out
     
     fContext.choices = () ->
         choices = []
         if fieldSpec.units?
             fieldSpec.units.map (e) ->
                 if typeof e is 'string'
-                    choiceLabel: _timeUnitFunctionMap[e].label
                     choice: e
+                    choiceLabel: _timeUnitFunctionMap[e].label
                     selected: _selected e
                 else
                     choice: e.choice
                     choiceLabel: e.label
-                    selected: _selected e
+                    selected: _selected e.choice
         else
             choices = _.keys(_timeUnitFunctionMap).map (e) ->
                 choiceLabel: _timeUnitFunctionMap[e].label
