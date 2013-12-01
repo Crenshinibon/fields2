@@ -9,7 +9,6 @@ Package.on_use(function (api) {
    //libs
    api.add_files('bootstrap-wysiwyg/bootstrap-wysiwyg.js', 'client');
    api.add_files('bootstrap-wysiwyg/jquery.hotkeys.js', 'client');
-   api.add_files('bootstrap-wysiwyg/styles.css','client');
    //api.export('wysiwyg');
    
    api.add_files('momentjs/moment-with-langs.js','client');

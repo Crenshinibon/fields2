@@ -230,7 +230,7 @@ _wrapDuration = (fContext,  fieldSpec) ->
         if fieldSpec.units?
             fieldSpec.units.forEach (e) ->
                 if typeof e is 'string'
-                    out _defaultUnitForLabel label
+                    out = _defaultUnitForLabel label
                 else
                     if e.label is label
                         out = e.choice
